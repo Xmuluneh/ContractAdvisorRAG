@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from langchain import ConversationChain
 from langchain.chat_models import ChatOpenAI
-
+from scripts.utils import MEMORY
+from scripts.doc_loader import load_document
 from lanarky import LangchainRouter
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
