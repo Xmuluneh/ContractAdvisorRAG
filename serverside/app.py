@@ -3,7 +3,7 @@ import sys
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from rag_app import configure_retrieval_chain
-from helper.util import MEMORY, load_data, load_qna_data
+from script.utill import MEMORY, load_data, load_qna_data
 from evaluate import evaluate_chain, evaluate_metrics, create_dataframe
 
 app = FastAPI()
