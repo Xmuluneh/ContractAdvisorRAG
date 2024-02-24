@@ -43,13 +43,10 @@ langchain_router.add_langchain_api_websocket_route("/ws", langchain_object=chain
 app.include_router(langchain_router)
 
 @app.post('/')
-async def chat(user_question: str = Form(...), files: List[UploadFile] = File(...)):
-    print("inside chat api")
-    print("Received user question:", user_question)
+async def post(user_question: str, files: List[UploadFile]):
     for uploaded_file in files:
         contents = await uploaded_file.read()
-        # Do something with the file contents if needed
-    
+        
     if not user_question:
         raise HTTPException(status_code=400, detail="User question is required")
 
@@ -61,3 +58,4 @@ async def chat(user_question: str = Form(...), files: List[UploadFile] = File(..
     })
 
     return {"response": response}
+
