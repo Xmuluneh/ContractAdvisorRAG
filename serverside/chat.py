@@ -22,7 +22,7 @@ def create_chain():
     )
 
 
-templates = Jinja2Templates(directory="server/templates")
+templates = Jinja2Templates(directory="serverside/templates")
 chain = create_chain()
 
 
@@ -40,3 +40,23 @@ langchain_router.add_langchain_api_route(
 langchain_router.add_langchain_api_websocket_route("/ws", langchain_object=chain)
 
 app.include_router(langchain_router)
+
+@app.post('/')
+async def chat(user_question: str = Form(...), files: List[UploadFile] = File(...)):
+    print("inside chat api")
+    print("Received user question:", user_question)
+    for uploaded_file in files:
+        contents = await uploaded_file.read()
+        # Do something with the file contents if needed
+    
+    if not user_question:
+        raise HTTPException(status_code=400, detail="User question is required")
+
+    CONV_CHAIN = configure_retrieval_chain(files)
+
+    response = CONV_CHAIN.run({
+        "question": user_question,
+        "chat_history": MEMORY.chat_memory.messages
+    })
+
+    return {"response": response}
