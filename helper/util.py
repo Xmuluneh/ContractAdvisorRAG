@@ -1,68 +1,74 @@
-import os
-from dotenv import load_dotenv, find_dotenv
+import logging
+import pathlib
+import pandas as pd
 
-import numpy as np
-from trulens_eval import (
-    Feedback,
-    TruLlama,
-    OpenAI
+from typing import Any, List
+
+from langchain.document_loaders import (
+    TextLoader,
+    UnstructuredEPubLoader,
+    UnstructuredWordDocumentLoader,
+    PDFMinerLoader,
+    DirectoryLoader
 )
-
-from trulens_eval.feedback import Groundedness
-import nest_asyncio
-
-nest_asyncio.apply()
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import Document
 
 
-def get_openai_api_key():
-    _ = load_dotenv(find_dotenv())
 
-    return os.getenv("OPENAI_API_KEY")
+MEMORY = ConversationBufferMemory(memory_key='chat_history', return_messages=True, output_key='answer')
 
+class EpubReader(UnstructuredEPubLoader):
+    def __init__(self, file_path: str | List[str], **unstructured_kwargs: Any):
+        super().__init__(file_path, **unstructured_kwargs, mode="elements", strategy="fast")
 
-def get_hf_api_key():
-    _ = load_dotenv(find_dotenv())
+class DocumentLoaderException(Exception):
+    def __init__(self, message: str, unsupported_extension: str):
+        self.message = message
+        self.unsupported_extension = unsupported_extension
+        super().__init__(self.message)
 
-    return os.getenv("HUGGINGFACE_API_KEY")
+    def __str__(self):
+        return f"{self.message} Unsupported extension: {self.unsupported_extension}"
 
-openai = OpenAI()
+class DocumentLoader(object):
+    supported_extensions = {
+        ".pdf": PDFMinerLoader,
+        ".txt": TextLoader,
+        ".epub": EpubReader,
+        ".docx": UnstructuredWordDocumentLoader,
+        ".doc": UnstructuredWordDocumentLoader
+    }
 
-qa_relevance = (
-    Feedback(openai.relevance_with_cot_reasons, name="Answer Relevance")
-    .on_input_output()
-)
+def load_document(temp_filepath: str) -> List[Document]:
+    ext = pathlib.Path(temp_filepath).suffix
+    loader_cls = DocumentLoader.supported_extensions.get(ext)
 
-qs_relevance = (
-    Feedback(openai.relevance_with_cot_reasons, name = "Context Relevance")
-    .on_input()
-    .on(TruLlama.select_source_nodes().node.text)
-    .aggregate(np.mean)
-)
-
-#grounded = Groundedness(groundedness_provider=openai, summarize_provider=openai)
-grounded = Groundedness(groundedness_provider=openai)
-
-groundedness = (
-    Feedback(grounded.groundedness_measure_with_cot_reasons, name="Groundedness")
-        .on(TruLlama.select_source_nodes().node.text)
-        .on_output()
-        .aggregate(grounded.grounded_statements_aggregator)
-)
-
-feedbacks = [qa_relevance, qs_relevance, groundedness]
-
-def get_trulens_recorder(query_engine, feedbacks, app_id):
-    tru_recorder = TruLlama(
-        query_engine,
-        app_id=app_id,
-        feedbacks=feedbacks
-    )
-    return tru_recorder
-
-def get_prebuilt_trulens_recorder(query_engine, app_id):
-    tru_recorder = TruLlama(
-        query_engine,
-        app_id=app_id,
-        feedbacks=feedbacks
+    if not loader_cls:
+        raise DocumentLoaderException(
+            f"Invalid extension type {ext}, cannot load this type of file",
+            unsupported_extension=ext
         )
-    return tru_recorder
+
+    loaded = loader_cls(temp_filepath)
+    docs = loaded.load()
+    logging.info(docs)
+    return docs
+
+def load_data(temp_filepath: str) -> List[Document]:
+    loaded = loader(temp_filepath, glob="*.pdf", loader_cls=PDFMinerLoader)
+    docs = loaded.load()
+    logging.info(docs)
+    return docs
+
+def load_qna_data(temp_filepath: str):
+    qna = pd.read_csv(temp_filepath)
+    eval_questions = qna['Questions'].tolist()
+    eval_answers = qna['Answers'].tolist()
+
+    examples = [
+        {"query": q, "ground_truths": [eval_answers[i]]}
+        for i, q in enumerate(eval_questions)
+    ]
+
+    return examples
