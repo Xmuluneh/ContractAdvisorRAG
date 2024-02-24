@@ -8,7 +8,7 @@ Our primary task involves building, evaluating, and improving a Retrieval Augmen
 ## Setup
 1. Backend setup
    
-   - Navigate to the: ```serverside/ dir```.
+   - Navigate to the:  ```serverside/ dir```.
    - Create a virtual environment: ```python3 -m venv rag```
    - install dependencies: ```pip install -r requirements.txt```
    - Run the server with: ```uvicorn main:app --reload```
