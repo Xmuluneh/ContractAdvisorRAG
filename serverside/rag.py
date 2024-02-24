@@ -11,7 +11,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Qdrant
 from langchain.schema import BaseRetriever, Document
-from script.util import load_document, MEMORY
+from scripts.doc_loader import load_document
+from scripts.util import MEMORY
 
 class ConversationChainConfigurator:
     def __init__(self, llm_model_name, llm_temperature, llm_streaming, max_tokens_limit):
